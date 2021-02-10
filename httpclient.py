@@ -37,6 +37,7 @@ class HTTPResponse(object):
 
 class HTTPClient(object):
     def get_host_port(self, url):
+        # parse the url
         url_parse = urllib.parse.urlparse(url)
         host = url_parse.netloc.split(':')[0]
         try:
@@ -51,6 +52,7 @@ class HTTPClient(object):
         return None
 
     def get_code(self, data):
+        # parse return data
         parse_data = data.split('\r\n\r\n')
         code = int(parse_data[0].split(' ')[1])
         return code
@@ -59,6 +61,7 @@ class HTTPClient(object):
         return None
 
     def get_body(self, data):
+        # parse return data
         parse_data = data.split('\r\n\r\n')
         body = parse_data[1]
         return body
@@ -85,7 +88,9 @@ class HTTPClient(object):
         code = 500
         body = ""
 
+        # get host and port
         (host, port) = self.get_host_port(url)
+        # get remote ip for socket
         remote_ip = socket.gethostbyname(host)
 
         self.connect(remote_ip, port)
@@ -93,12 +98,14 @@ class HTTPClient(object):
         path = urllib.parse.urlparse(url).path
         if path == '':
             path = '/'
+
         request = 'GET ' + path + ' HTTP/1.1\r\nHost: ' + \
             host + '\r\nAccept: */*\r\nConnection: close\r\n\r\n'
         self.sendall(request)
 
         data = self.recvall(self.socket)
         self.close()
+        print(data)
         code = self.get_code(data)
         body = self.get_body(data)
 
@@ -107,6 +114,37 @@ class HTTPClient(object):
     def POST(self, url, args=None):
         code = 500
         body = ""
+
+        # get host and port
+        (host, port) = self.get_host_port(url)
+        # get remote ip for socket
+        remote_ip = socket.gethostbyname(host)
+
+        self.connect(remote_ip, port)
+
+        path = urllib.parse.urlparse(url).path
+        if path == '':
+            path = '/'
+
+        request = 'POST ' + path + ' HTTP/1.1\r\nHost: ' + \
+            host + '\r\nAccept: */*\r\nConnection: close\r\n'
+        if args:
+            param = urllib.parse.urlencode(args)
+            length = len(param)
+            request += 'Content-Type: application/x-www-form-urlencoded\r\nContent-Length: ' + \
+                str(length) + '\r\n\r\n' + param
+        else:
+            request += 'Content-Length: 0\r\n\r\n'
+
+        self.sendall(request)
+
+        data = self.recvall(self.socket)
+        self.close()
+        print(data)
+
+        code = self.get_code(data)
+        body = self.get_body(data)
+
         return HTTPResponse(code, body)
 
     def command(self, url, command="GET", args=None):
