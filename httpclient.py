@@ -51,59 +51,57 @@ class HTTPClient(object):
         return None
 
     def get_code(self, data):
-        return None
+        parse_data = data.split('\r\n\r\n')
+        code = int(parse_data[0].split(' ')[1])
+        return code
 
     def get_headers(self, data):
         return None
 
     def get_body(self, data):
-        return None
+        parse_data = data.split('\r\n\r\n')
+        body = parse_data[1]
+        return body
 
     def sendall(self, data):
         self.socket.sendall(data.encode('utf-8'))
 
     def close(self):
-        print('closing')
         self.socket.close()
 
     # read everything from the socket
     def recvall(self, sock):
-        print('start receiving')
         buffer = bytearray()
         done = False
         while not done:
-            print('receiving')
             part = sock.recv(1024)
-            print(part)
             if (part):
-                print('1')
                 buffer.extend(part)
             else:
-                print('2')
                 done = not part
         return buffer.decode('utf-8')
 
     def GET(self, url, args=None):
         code = 500
         body = ""
-        print(url)
+
         (host, port) = self.get_host_port(url)
-        print(host)
-        print(port)
         remote_ip = socket.gethostbyname(host)
-        print(remote_ip)
+
         self.connect(remote_ip, port)
+
         path = urllib.parse.urlparse(url).path
         if path == '':
             path = '/'
-        print(path)
-        request = 'GET ' + path + ' HTTP/1.1\r\nUser-Agent: curl/7.29.0\r\nHost: ' + \
-            host + '\r\nAccept: */*\r\nConnection: close\r\n'
-        print(request)
+        request = 'GET ' + path + ' HTTP/1.1\r\nHost: ' + \
+            host + '\r\nAccept: */*\r\nConnection: close\r\n\r\n'
         self.sendall(request)
+
         data = self.recvall(self.socket)
-        print(data)
         self.close()
+        code = self.get_code(data)
+        body = self.get_body(data)
+
         return HTTPResponse(code, body)
 
     def POST(self, url, args=None):
